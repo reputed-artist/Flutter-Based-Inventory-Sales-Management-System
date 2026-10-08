@@ -1,0 +1,39 @@
+name: ink_inventory_sync
+description: "Real-time Multi-Device Inventory Management App for HP Cartridges, Handy Printers, Docod, Rynan and Packaging Machines."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Supabase Realtime synchronization
+  supabase_flutter: ^2.16.0
+  # State management
+  provider: ^6.1.2
+  # Local storage fallback & preferences
+  shared_preferences: ^2.2.2
+  # Barcode & QR scanning for Android camera
+  mobile_scanner: ^5.1.0
+  # Audio/haptic feedback
+  audioplayers: ^6.0.0
+  # Date formatting
+  intl: ^0.19.0
+  # Export to CSV / file sharing
+  csv: ^6.0.0
+  path_provider: ^2.1.2
+  share_plus: ^9.0.0
+  # Icons & UI helpers
+  lucide_icons: ^0.252.0
+  flutter_animate: ^4.5.0
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

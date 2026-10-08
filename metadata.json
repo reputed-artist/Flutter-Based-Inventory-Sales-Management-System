@@ -1,0 +1,6 @@
+{
+  "name": "Inventory & Sales Sync Manager",
+  "description": "Flutter & Android multi-user real-time inventory management for HP cartridges, Handy/Online/Docod printers, Rynan cartridges, and packaging machines with Supabase synchronization and reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,1 @@
+ C:\\Users\\codetech\ engineers\\Downloads\\flutter\ inventory-sales-sync-manager\\.dart_tool\\flutter_build\\0f0688c3c612b7188b04d94fda42da28\\native_assets.json: 
