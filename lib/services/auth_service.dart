@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -49,16 +49,12 @@ class AuthResult {
 /// so PostgREST answered every authenticated call with 401 PGRST301
 
 /// "No suitable key or wrong key type". No app or Vault change can fix that -
+/// the signatures are of incompatible key types.
+///
+/// This class instead:
+///   1. signs in anonymously with GoTrue (a token signed by Supabase itself,
+///      so PostgREST accepts it);
 
-  // Removed: the SDK now manages the session token itself; no local JWT
-
-  // exists to clear.
-
-
-
-  String? _sessionId;
-  bool _restored = false;
-///      by Supabase itself, so PostgREST accepts it);
 
 ///   2. call operator_bind_session(operator_id, pin, device...) which
 
@@ -90,6 +86,10 @@ class AuthService extends ChangeNotifier {
 
   static const String _kDeviceId = 'auth_device_id';
 
+  static const String _kDeviceLabel = 'auth_device_label';
+
+  static const String _kLegacyToken = 'auth_token';
+
 
 
   // Legacy key from the old self-minted-JWT design (pre-007). Removed on
@@ -99,10 +99,6 @@ class AuthService extends ChangeNotifier {
   // Removed: the SDK now manages the session token itself; no local JWT
 
   // exists to clear.
-
-
-
-  OperatorUser? _operator;
 
 
 
