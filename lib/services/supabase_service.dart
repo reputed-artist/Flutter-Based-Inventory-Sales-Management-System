@@ -40,9 +40,9 @@ class SupabaseService {
   ///   1. values saved in the in-app Supabase settings dialog
   ///   2. `--dart-define` values (use this to point a build elsewhere)
   ///   3. these defaults, so a fresh install connects with no setup
-  static const String _defaultUrl = 'https://edkeoeevdldytggiisxb.supabase.co';
+  static const String _defaultUrl = 'copy paste Supabase Project URL';
   static const String _defaultKey =
-      'sb_publishable_mud9BiBIUG94TCJlnXIiJw_3g9dXnid';
+      'copy paste Supabase Publishable key URL';
 
   /// True when credentials are available from any source.
   bool get hasEnvDefaults => _envUrl.isNotEmpty && _envKey.isNotEmpty;
