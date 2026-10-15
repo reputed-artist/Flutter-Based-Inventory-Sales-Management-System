@@ -106,16 +106,29 @@ class SupabaseService {
         return false;
       }
 
-      await Supabase.initialize(
-        url: url.trim(),
-        publishableKey: anonKey.trim(),
-        debug: kDebugMode,
-        // v2.16.0 SDK: pass FlutterAuthClientOptions so the GoTrue client
-        // starts the session auto-refresh lifecycle. Anonymous sign-ins are
-        // enabled server-side (Dashboard -> Authentication -> Sign In/Up ->
-        // Allow anonymous sign-ins ON), not by a client flag.
-        authOptions: const FlutterAuthClientOptions(),
-      );
+      try {
+        await Supabase.initialize(
+          url: url.trim(),
+          publishableKey: anonKey.trim(),
+          debug: kDebugMode,
+          // v2.16.0 SDK: pass FlutterAuthClientOptions so the GoTrue client
+          // starts the session auto-refresh lifecycle. Anonymous sign-ins are
+          // enabled server-side (Dashboard -> Authentication -> Sign In/Up ->
+          // Allow anonymous sign-ins ON), not by a client flag.
+          authOptions: const FlutterAuthClientOptions(),
+        );
+      } catch (e) {
+        // Hot restart / re-configure calls this twice in the same isolate.
+        // Supabase.initialize() throws "already initialized" the second time
+        // even though the existing client is perfectly usable. Treat that as
+        // success instead of flipping the app into local-only mode (which is
+        // exactly how working Chrome builds silently stopped persisting).
+        final msg = e.toString().toLowerCase();
+        if (!(msg.contains('already initialized') ||
+            msg.contains('already been initialized'))) {
+          rethrow;
+        }
+      }
 
       _client = Supabase.instance.client;
       _isConfigured = true;
@@ -267,8 +280,15 @@ class SupabaseService {
     });
     final map = data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
     if (map['ok'] != true) {
-      // Surface the server's own error rather than silently reporting success.
+      // The RPC answered but refused the write (AUTH_REQUIRED, missing
+      // binding, INSUFFICIENT_STOCK, ...). Throw so the provider shows the
+      // server's own reason instead of closing the sheet as "synced" while
+      // the database never changed.
+      final reason = map['error']?.toString() ??
+          map['message']?.toString() ??
+          'Server refused the stock movement';
       debugPrint('apply_stock_movement returned ok=false: $map');
+      throw StateError(reason);
     } else {
       // These are the keys the RPC actually returns (see 001_init.sql).
       debugPrint('apply_stock_movement committed: '

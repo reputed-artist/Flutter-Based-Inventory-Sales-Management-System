@@ -433,33 +433,13 @@ class AuthService extends ChangeNotifier {
       //    already restored the previous session, so this is a no-op.
 
       if (client.auth.currentSession == null) {
-
-        try {
-
-          final res = await client.auth.signInAnonymously();
-
-          if (res.session == null) {
-
-            return const AuthResult.failure(
-
-                'Could not start an anonymous session. Try again.');
-
-          }
-
-        } on AuthException catch (e) {
-
-          return AuthResult.failure(
-
-            'Anonymous sign-in is disabled on this project. Enable '
-
-            '"Allow anonymous sign-ins" in Supabase Auth settings, then '
-
-            'relaunch the app. ($e)',
-
-          );
-
-        }
-
+        // PIN-only login: the ONLY session source is an anonymous Supabase
+        // Auth session (no email, no password, no extra screens anywhere).
+        // Requires Dashboard -> Authentication -> "Allow anonymous sign-ins"
+        // ON. When it is OFF there is no silent fallback - the operator gets
+        // the exact toggle to flip instead of a cryptic "invalid email".
+        final sessionError = await _ensureAnonymousSession(client);
+        if (sessionError != null) return sessionError;
       }
 
 
@@ -536,6 +516,30 @@ class AuthService extends ChangeNotifier {
 
     }
 
+  }
+
+  /// Ensure an anonymous Supabase Auth session exists (the ONLY session source
+  /// for PIN-only login). Returns null when a session now exists, otherwise an
+  /// [AuthResult] failure naming the exact dashboard toggle to flip. There is
+  /// deliberately no email/password fallback: the app is PIN-only, and a
+  /// `@device.local` address is rejected by Supabase as invalid, which is the
+  /// exact "could not start session ... invalid" error just reported.
+  Future<AuthResult?> _ensureAnonymousSession(SupabaseClient client) async {
+    try {
+      final res = await client.auth.signInAnonymously();
+      if (res.session == null && client.auth.currentSession == null) {
+        return const AuthResult.failure(
+            'Could not start a session. Check the connection and try again.');
+      }
+      return null;
+    } on AuthException catch (e) {
+      debugPrint('AuthService anonymous sign-in failed: $e');
+      return AuthResult.failure(
+        'Anonymous sign-in is disabled on this project. Enable '
+        '"Allow anonymous sign-ins" in Supabase Dashboard -> Authentication '
+        '-> Sign In/Up, then fully relaunch the app. ($e)',
+      );
+    }
   }
 
 }

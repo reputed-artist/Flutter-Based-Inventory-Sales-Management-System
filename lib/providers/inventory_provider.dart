@@ -208,16 +208,20 @@ class InventoryProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void applyLocalStockMovement({
+  Future<void> applyLocalStockMovement({
     required String itemId,
     required String type,
     required int quantity,
     double? unitPrice,
     String? client,
     String? notes,
-  }) {
+  }) async {
     final index = _items.indexWhere((i) => i.id == itemId);
-    if (index == -1 || quantity <= 0) return;
+    // A physical audit to zero is a legitimate count - only deltas must be
+    // positive. The old `quantity <= 0` guard silently dropped "audit to 0",
+    // which is exactly an "add in / sold out doesn't reflect" report.
+    if (index == -1) return;
+    if (quantity <= 0 && type != 'correction') return;
 
     final item = _items[index];
     final prevCount = item.leftCount;
@@ -296,8 +300,17 @@ class InventoryProvider extends ChangeNotifier {
     notifyListeners();
 
     if (_supabase.isConfigured) {
-      _supabase.upsertItem(updatedItem);
-      _supabase.logTransaction(txn);
+      // Best-effort push of the local snapshot. Awaited (not fire-and-forget)
+      // so a rejected write is reported via _lastError instead of vanishing
+      // into an unobserved future while the next refresh wipes the change.
+      try {
+        await _supabase.upsertItem(updatedItem);
+        await _supabase.logTransaction(txn);
+      } catch (e) {
+        debugPrint('InventoryProvider.applyLocalStockMovement push failed: $e');
+        _lastError = _friendlyError(e);
+        notifyListeners();
+      }
     }
   }
 
@@ -336,7 +349,7 @@ class InventoryProvider extends ChangeNotifier {
         return;
       } catch (e) {
         if (_shouldFallbackLocally(e)) {
-          applyLocalStockMovement(
+          await applyLocalStockMovement(
             itemId: itemId,
             type: 'in',
             quantity: quantity,
@@ -352,7 +365,7 @@ class InventoryProvider extends ChangeNotifier {
       }
     }
 
-    applyLocalStockMovement(
+    await applyLocalStockMovement(
       itemId: itemId,
       type: 'in',
       quantity: quantity,
@@ -396,7 +409,7 @@ class InventoryProvider extends ChangeNotifier {
         return;
       } catch (e) {
         if (_shouldFallbackLocally(e)) {
-          applyLocalStockMovement(
+          await applyLocalStockMovement(
             itemId: itemId,
             type: 'sold',
             quantity: quantity,
@@ -412,7 +425,7 @@ class InventoryProvider extends ChangeNotifier {
       }
     }
 
-    applyLocalStockMovement(
+    await applyLocalStockMovement(
       itemId: itemId,
       type: 'sold',
       quantity: quantity,
@@ -448,7 +461,7 @@ class InventoryProvider extends ChangeNotifier {
         return;
       } catch (e) {
         if (_shouldFallbackLocally(e)) {
-          applyLocalStockMovement(
+          await applyLocalStockMovement(
             itemId: itemId,
             type: 'correction',
             quantity: physicalCount,
@@ -462,7 +475,7 @@ class InventoryProvider extends ChangeNotifier {
       }
     }
 
-    applyLocalStockMovement(
+    await applyLocalStockMovement(
       itemId: itemId,
       type: 'correction',
       quantity: physicalCount,
@@ -533,9 +546,20 @@ class InventoryProvider extends ChangeNotifier {
   ///
   /// Best-effort: the item count above is already correct from the RPC result,
   /// so a failure here only leaves the audit trail one row behind until the
-  /// next realtime event or refresh.
+  /// next realtime event or refresh. Also re-reads the item row: with 5-6
+  /// devices writing concurrently, the follow-up read is the final guard that
+  /// the screen matches the committed row even if the RPC payload was stale.
   Future<void> _reloadItemAndTxns(String itemId) async {
     try {
+      final remoteItems = await _supabase.fetchInventory();
+      if (remoteItems.isNotEmpty) {
+        final fresh = remoteItems.firstWhere(
+          (i) => i.id == itemId,
+          orElse: () => _items.firstWhere((i) => i.id == itemId),
+        );
+        final index = _items.indexWhere((i) => i.id == itemId);
+        if (index != -1) _items[index] = fresh;
+      }
       final remoteTxns = await _supabase.fetchTransactions();
       if (remoteTxns.isNotEmpty) {
         _transactions = remoteTxns;
