@@ -240,6 +240,19 @@ Then run the application again.
 
 </details>
 
+## 🔑 Demo Login Passcodes
+
+Use the following passcodes to test the application's login functionality, if supported by your current app configuration.
+
+| Demo Account | Passcode |
+|---|---|
+| Demo User 1 | `2222` |
+| Demo User 2 | `3333` |
+| Demo User 3 | `4444` |
+| Demo User 4 | `5555` |
+
+> **📝 Note:** These are demo passcodes for testing purposes. Make sure they match the passcodes configured in your application. Do not use these simple passcodes for production accounts.
+
 ## 🔒 Security Best Practices
 
 - Never commit service-role keys, secret keys, database passwords, or other private credentials.
